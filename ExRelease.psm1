@@ -151,18 +151,20 @@ param
             WriteTSBookmarks -assName $subFile 
         }
 
-        $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes",""
+        $loadFontsStatus = LoadFonts -fontDir $fontDir 
+
+        <# $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes",""
         $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No",""
         $choices = [System.Management.Automation.Host.ChoiceDescription[]]($yes,$no)
         $caption = "Ready to load fonts in $($fontDir)."
         $message = "Do you want to load fonts now?"
         $result = $Host.UI.PromptForChoice($caption,$message,$choices,0)
-        switch($result)
+        bswitch($result)
         {
 	        0 { $loadFontsStatus = LoadFonts -fontDir $fontDir }
 	        1 { Write-Host "To load extracted fonts at a later time , run this script with -l. To install extracted fonts, run this script with -f." }
 	        default { throw "bad choice" }
-        }
+        } #>
     }
     else
     {
@@ -362,7 +364,12 @@ function Index([string]$dir)
     foreach($file in $mkvFiles)
     {
 	    Write-Host "Indexing $($file.Name) ..." -foreground yellow
-	    &ffmsindex $file `        | Tee-Object -Variable ffmsOutput | %{$_.Split("`n")} `        | Select-String -pattern "(?:Indexing, please wait... )([0-9]{1,3})(?:%)" -AllMatches `        | %{$last=-1}{if ($_.Matches.groups[1].value -ne $last -and $_.Matches.groups[1].value % 5 -eq 0) `                        { Write-Host "$($_.Matches.groups[1].value)% " -ForegroundColor Gray -NoNewline;                            $last=$_.Matches.groups[1].value 
+	    &ffmsindex $file `
+        | Tee-Object -Variable ffmsOutput | %{$_.Split("`n")} `
+        | Select-String -pattern "(?:Indexing, please wait... )([0-9]{1,3})(?:%)" -AllMatches `
+        | %{$last=-1}{if ($_.Matches.groups[1].value -ne $last -and $_.Matches.groups[1].value % 5 -eq 0) `
+                        { Write-Host "$($_.Matches.groups[1].value)% " -ForegroundColor Gray -NoNewline; 
+                           $last=$_.Matches.groups[1].value 
                         } 
                      }
         
@@ -399,14 +406,23 @@ function Extract([string]$dir, [string]$fontDir)
 		            "S_TEXT/ASS" { "ass" }
 		            "S_TEXT/UTF8" { "srt" }
                     "S_VOBSUB" { "sub" }
+					"S_HDMV/PGS" { "sup" }
 		            default { "unknown" }
 	            }
                 Write-Host "#$($sub.ID): $(if($sub.Name) {$sub.Name} else {("unnamed")}) ($subExt)" -ForegroundColor Gray
 
                 $subFiles += ((Join-Path $file.Directory $file.BaseName) + ".$($sub.ID).$subExt")
 
-                if(!(Test-Path -LiteralPath $subFiles[-1] -PathType Leaf))                {
-  	                # properly filters and outputs mkvextract progress without spamming the shell                     # TODO: parse $mkvexEOutput for potential errors                    &mkvextract tracks $file "$($sub.ID):$($subFiles[-1])" `                    | Tee-Object -Variable mkvexEOutput | %{$_.Split("`n")} `                    | Select-String -pattern "(?:Progress: )([0-9]{1,3})(?:%)" -AllMatches `                    | %{$last=-1}{if ($_.Matches.groups[1].value -ne $last -and $_.Matches.groups[1].value % 5 -eq 0)                                   { Write-Host "$($_.Matches.groups[1].value)% " -ForegroundColor Gray -NoNewline;                                     $last=$_.Matches.groups[1].value 
+                if(!(Test-Path -LiteralPath $subFiles[-1] -PathType Leaf))
+                {
+  	                # properly filters and outputs mkvextract progress without spamming the shell 
+                    # TODO: parse $mkvexEOutput for potential errors
+                    &mkvextract tracks $file "$($sub.ID):$($subFiles[-1])" `
+                    | Tee-Object -Variable mkvexEOutput | %{$_.Split("`n")} `
+                    | Select-String -pattern "(?:Progress: )([0-9]{1,3})(?:%)" -AllMatches `
+                    | %{$last=-1}{if ($_.Matches.groups[1].value -ne $last -and $_.Matches.groups[1].value % 5 -eq 0) 
+                                  { Write-Host "$($_.Matches.groups[1].value)% " -ForegroundColor Gray -NoNewline; 
+                                    $last=$_.Matches.groups[1].value 
                                    }
                        }{Write-Host "Done.`n" -ForegroundColor Green }
                 } else { Write-Host "$($subFiles[-1]) already exists, skipping." -ForegroundColor Gray }
@@ -431,7 +447,10 @@ function Extract([string]$dir, [string]$fontDir)
 		        $i++
 	        }
 	
-	        &mkvextract attachments $file $attachmentArgs `            | Tee-Object -Variable mkvexAOutput | %{$_.Split("`n")} `            | Select-String -pattern "(#[0-9]+)(?:.*?, is written to ')(.*?)(?:'.)" -AllMatches `            | %{ Write-Host "$($_.Matches.groups[1].value): $($_.Matches.groups[2].value)" -ForegroundColor Gray } -end {Write-Host "Done.`n" -ForegroundColor Green}
+	        &mkvextract attachments $file $attachmentArgs `
+            | Tee-Object -Variable mkvexAOutput | %{$_.Split("`n")} `
+            | Select-String -pattern "(#[0-9]+)(?:.*?, is written to ')(.*?)(?:'.)" -AllMatches `
+            | %{ Write-Host "$($_.Matches.groups[1].value): $($_.Matches.groups[2].value)" -ForegroundColor Gray } -end {Write-Host "Done.`n" -ForegroundColor Green}
         }
         else { Write-Host "No fonts attached to $($file.Name).`n" -ForegroundColor Gray }
 
@@ -512,7 +531,9 @@ function WriteTsBookmarks([string]$assName)
     [string[]] $bookmarks=@()
 
     $linesSorted = $assContentSections[3] -split [environment]::NewLine`
-                   | Sort-Object -Property @{Expression=`                   {$_ -replace "(.*?: [0-9]*,)([0-9]+:[0-9]{2}:[0-9]{2}.[0-9]{2})(.*)", "`$2" | Get-Date}`                   }
+                   | Sort-Object -Property @{Expression=`
+                   {$_ -replace "(.*?: [0-9]*,)([0-9]+:[0-9]{2}:[0-9]{2}.[0-9]{2})(.*)", "`$2" | Get-Date}`
+                   }
     
     foreach ($line in $linesSorted)
     {
@@ -650,13 +671,13 @@ function LoadFonts([string]$fontDir, [boolean]$unload)
 
     if (!$unload) { 
         $text = "Loading fonts..." 
-        $signature = @’
+        $signature = @â€™
         [DllImport("gdi32.dll")]
         public static extern int AddFontResourceEx(
         string lpszFilename, 
         uint fl, 
         IntPtr pdv);
-‘@
+â€˜@
 
         $dotnet = Add-Type -MemberDefinition $signature `
          -Name GDI32 -Namespace AddFontResourceEx `
@@ -666,14 +687,14 @@ function LoadFonts([string]$fontDir, [boolean]$unload)
     else { 
         $text = "Unloading fonts..." 
 
-        $signature = @’
+        $signature = @â€™
         [DllImport("gdi32.dll")]
         public static extern bool RemoveFontResourceEx(
         string lpFileName, 
         uint fl,
         IntPtr pdv);
    
-‘@
+â€˜@
 
     $dotnet = Add-Type -MemberDefinition $signature `
         -Name GDI32 -Namespace RemoveFontResourceEx `
