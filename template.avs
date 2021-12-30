@@ -3,7 +3,7 @@
 #############################################################################
 
 # Adding blank frames in front or back of the VidClp
-Front_FramePadding = 2169
+Front_FramePadding = 0
 Back_FramePadding = 0
 
 # Options
