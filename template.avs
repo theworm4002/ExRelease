@@ -27,10 +27,12 @@ group = "{{?GROUP_NAME}}"
 #c2  = ChangeFPS(c2,29.950)
 
 ## creating file and set path for future log entries:
-(Logging) ? Eval("""
+(Logging) 
+\ ? Eval("""
 	folder = ScriptDir()
-	(RightStr(folder, 1) == "\") ?
-   \     SetLogParams(folder + group + "_ScriptLog.log", LOG_INFO): SetLogParams(folder + "\" + group + "_ScriptLog.log", LOG_INFO)
+	(RightStr(folder, 1) == "\") 
+    \    ? SetLogParams(folder + group + "_ScriptLog.log", LOG_INFO)
+	\    : SetLogParams(folder + "\" + group + "_ScriptLog.log", LOG_INFO)
 	LogMsg(string("Starting Logger"), LOG_INFO)
 	""")
 \:nop() # Undefined()
@@ -45,7 +47,8 @@ c1  = FFVideoSource (vidfile, colorspace="YV12")
 c2  = FFVideoSource (vidfile, varprefix="c1_", colorspace="YV12")
 
 #Add blank frames to vid file if needed
-(StrLen(subfile) == 0) ? Eval("""
+(StrLen(subfile) == 0) 
+\ ? Eval("""
     F_blank1 = BlankClip(c1, length= Front_FramePadding)  
     B_blank1 = BlankClip(c1, length= Back_FramePadding)
     c1 = F_blank1+c1+B_blank1
@@ -75,16 +78,17 @@ tv_range = (c1_FFCOLOR_RANGE != 2)
 (b10) ? c2 : c1
 
 #Adding Subs based on the file ext
-Subs = (StrLen(subfile) > 0 && display_subtitles) ?
-\      (RightStr(LCase(subfile), 3) == "sup") ?
-\         	(b10) ? Dither_limit_dif16(DitherPost(mode=-1).SupTitle(subfile).Dither_convert_8_to_16 (), thr=1.0, elast=2.0) : SupTitle(subfile)
-\          :(RightStr(LCase(subfile), 3) == "sub") ?
-\         	(b10) ? Dither_limit_dif16(DitherPost(mode=-1).VSFilter_Vobsub(subfile).Dither_convert_8_to_16 (), thr=1.0, elast=2.0) : VSFilter_Vobsub(subfile)
-\          :(b10) ? Dither_limit_dif16(DitherPost(mode=-1).AssRender(subfile).Dither_convert_8_to_16 (), thr=1.0, elast=2.0) : AssRender(subfile)
+Subs = (StrLen(subfile) > 0 && display_subtitles) 
+\    ? (RightStr(LCase(subfile), 3) == "sup") 
+\         ? (b10) ? Dither_limit_dif16(DitherPost(mode=-1).SupTitle(subfile).Dither_convert_8_to_16 (), thr=1.0, elast=2.0) : SupTitle(subfile)
+\         : (RightStr(LCase(subfile), 3) == "sub") 
+\         ? (b10) ? Dither_limit_dif16(DitherPost(mode=-1).VSFilter_Vobsub(subfile).Dither_convert_8_to_16 (), thr=1.0, elast=2.0) : VSFilter_Vobsub(subfile)
+\         : (b10) ? Dither_limit_dif16(DitherPost(mode=-1).AssRender(subfile).Dither_convert_8_to_16 (), thr=1.0, elast=2.0) : AssRender(subfile)
 \: nop()
 
 #Add blank frames to vid+sub file if needed
-(StrLen(subfile) > 0 && display_subtitles) ? Eval("""
+(StrLen(subfile) > 0 && display_subtitles) 
+\ ? Eval("""
     F_blank2 = BlankClip(Subs, length= Front_FramePadding)  
     B_blank2 = BlankClip(Subs, length= Back_FramePadding)
     F_blank2+Subs+B_blank2
@@ -95,16 +99,22 @@ Subs = (StrLen(subfile) > 0 && display_subtitles) ?
 \ : (b10) ? Dither_addborders16 (0, 0, wm4 - w, hm4 - h)
 \         : AddBorders (0, 0, wm4 - w, hm4 - h)
 
-(target_width != c1.Width() || target_height != c1.Height()) ? Dither_srgb_display (lsb_in=b10, matrix=matrix, par=par, tv_range=tv_range, w=target_width, h=target_height)
-\ :                                                            Dither_srgb_display (lsb_in=b10, matrix=matrix, par=par, tv_range=tv_range)
+#upscale
+(target_width != c1.Width() || target_height != c1.Height()) 
+\     ? Dither_srgb_display (lsb_in=b10, matrix=matrix, par=par, tv_range=tv_range, w=target_width, h=target_height)
+\     : Dither_srgb_display (lsb_in=b10, matrix=matrix, par=par, tv_range=tv_range)
 
 #for screenshot macro and info in screenshot
-screenShotGroup = (target_width > c1.Width() || target_height > c1.Height()) ?
-\ group + "\nupscaled" : group
-cmt1 = (display_group) ? 
-\ screenShotGroup : ""
+screenShotGroup = (target_width > c1.Width() || target_height > c1.Height()) 
+\  ? group + "\nupscaled" 
+\  : group
+cmt1 = (display_group)
+\  ? screenShotGroup 
+\  : ""
 
 FFInfoEX(framenum=displayFramNum,vfrtime=display_timecode, cfrtime=false, frametype=false, x=last.width-6, y=4, cmt=cmt1, align=9, shorttime=true)
 
 # Adding notes on screen
 Subtitle(Notes, lsp=0,text_color=$fd2f2f,size=24,align=9,y=30)
+
+
