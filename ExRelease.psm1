@@ -269,11 +269,11 @@ function Get-MkvInfo([string]$file)
     }
 
     $segments = $mkvInfoFilt | ?{ $_[2] -eq "Segment"} | %{$_[3]}
-    $tracks = $segments.("Segment tracks")[0]["A track"]
+    $tracks = $segments.("Tracks")[0]["Track"]
 
     $segmentInfo = [PSCustomObject]@{
         UID = [byte[]]$(,@($segments.("Segment information").("Segment UID")[0] -split "\s" | %{[byte]$_}))
-        Duration = [TimeSpan]($segments.("Segment information").("Duration")[0] -creplace ".*?s \(([0-9]*:[0-9]{2}:[0-9]{2}.[0-9]{3})\)","`$1")
+        Duration = [TimeSpan](($segments.("Segment information").("Duration")[0] -creplace ".*?s \(([0-9]*:[0-9]{2}:[0-9]{2}.[0-9]{3})\)","`$1").trimend("0"))
         TrackCount = $tracks.Length
         }
 
@@ -300,7 +300,7 @@ function Get-MkvInfo([string]$file)
         if($trackType -eq "video")
         {
             $trackInfoVideo = @{
-                Framerate = [float]($track.("Default duration")[0] -creplace "[0-9]*.[0-9]*ms \(([0-9]*.[0-9]*) frames.*?\)","`$1")
+                Framerate = [float]($track.("Default duration")[0] -creplace "([0-9]*:[0-9]*:[0-9]*.[0-9]*) \(([0-9]*.[0-9]*) frames.*?\)","`$2")
                 dResX = [int]$track.("Video track").("Display width")[0]
                 dResY = [int]$track.("Video track").("Display height")[0]
                 pResX = [int]$track.("Video track").("Pixel width")[0]
